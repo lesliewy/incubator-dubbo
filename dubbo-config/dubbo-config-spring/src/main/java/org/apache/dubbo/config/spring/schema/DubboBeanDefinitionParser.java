@@ -54,7 +54,7 @@ import java.util.regex.Pattern;
 
 /**
  * AbstractBeanDefinitionParser
- *
+ * 解析配置文件.
  * @export
  */
 public class DubboBeanDefinitionParser implements BeanDefinitionParser {
@@ -72,6 +72,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
     @SuppressWarnings("unchecked")
     private static BeanDefinition parse(Element element, ParserContext parserContext, Class<?> beanClass, boolean required) {
         RootBeanDefinition beanDefinition = new RootBeanDefinition();
+        // 设置要给哪个bean的属性填充值.
         beanDefinition.setBeanClass(beanClass);
         beanDefinition.setLazyInit(false);
         String id = element.getAttribute("id");
@@ -98,6 +99,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 throw new IllegalStateException("Duplicate spring bean id " + id);
             }
             parserContext.getRegistry().registerBeanDefinition(id, beanDefinition);
+            // 赋值的方式.
             beanDefinition.getPropertyValues().addPropertyValue("id", id);
         }
         if (ProtocolConfig.class.equals(beanClass)) {
@@ -112,6 +114,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                 }
             }
         } else if (ServiceBean.class.equals(beanClass)) {
+            // dubbo:service 中配置了class, 赋值了 ref
             String className = element.getAttribute("class");
             if (className != null && className.length() > 0) {
                 RootBeanDefinition classDefinition = new RootBeanDefinition();
@@ -127,6 +130,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
         }
         Set<String> props = new HashSet<String>();
         ManagedMap parameters = null;
+        // 全量遍历， 按照bean中配置的setter() 来遍历用户配置, 来对bean的属性赋值.
         for (Method setter : beanClass.getMethods()) {
             String name = setter.getName();
             if (name.length() > 3 && name.startsWith("set")
@@ -205,6 +209,7 @@ public class DubboBeanDefinitionParser implements BeanDefinitionParser {
                                     reference = new RuntimeBeanReference(invokeRef);
                                     beanDefinition.getPropertyValues().addPropertyValue("oninvokeMethod", invokeRefMethod);
                                 } else {
+                                    // 有 ref, RuntimeBeanReference 来封装具体的bean.
                                     if ("ref".equals(property) && parserContext.getRegistry().containsBeanDefinition(value)) {
                                         BeanDefinition refBean = parserContext.getRegistry().getBeanDefinition(value);
                                         if (!refBean.isSingleton()) {

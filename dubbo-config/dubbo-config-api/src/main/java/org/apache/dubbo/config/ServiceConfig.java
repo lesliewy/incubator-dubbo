@@ -265,6 +265,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         completeCompoundConfigs();
         // Config Center should always being started first.
         startConfigCenter();
+        // 初始化: providerConfig, application, registy, protocal等
         checkDefault();
         checkApplication();
         checkRegistry();
@@ -335,10 +336,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 delay = provider.getDelay();
             }
         }
+        // 无需暴露服务.
         if (export != null && !export) {
             return;
         }
 
+        // 延时暴露服务.
         if (delay != null && delay > 0) {
             delayExportExecutor.schedule(this::doExport, delay, TimeUnit.MILLISECONDS);
         } else {
@@ -358,6 +361,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (path == null || path.length() == 0) {
             path = interfaceName;
         }
+        // 每个dubbo:service 生成一个ProviderModel.
         ProviderModel providerModel = new ProviderModel(getUniqueServiceName(), ref, interfaceClass);
         ApplicationModel.initProviderModel(getUniqueServiceName(), providerModel);
         doExportUrls();
@@ -397,6 +401,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 拼接registry url:
+        // registry://172.23.2.101:2181/com.alibaba.dubbo.registry.RegistryService?application=oic-dubbo-provider&dubbo=2.6.1&logger=slf4j&pid=15258&register=true&registry=zookeeper&timestamp=1528958780785
         List<URL> registryURLs = loadRegistries(true);
         for (ProtocolConfig protocolConfig : protocols) {
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
@@ -509,6 +515,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
+        //url 类似这样: dubbo://10.8.0.28:12000/com.tyyd.oic.service.PushMessageService?accepts=1000&anyhost=true&application=oic-dubbo-provider&bind.ip=10.8.0.28&bind.port=12000&buffer=8192&charset=UTF-8&default.service.filter=dubboCallDetailFilter&dubbo=2.6.1&generic=false&interface=com.tyyd.oic.service.PushMessageService&iothreads=9&logger=slf4j&methods=deletePushMessage,getPushMessage,batchPushMessage,addPushMessage,updatePushMessage,qryPushMessage&payload=8388608&pid=15374&queues=0&retries=0&revision=1.0.0&serialization=hessian2&side=provider&threadpool=fixed&threads=100&timeout=6000&timestamp=1528959454516&version=1.0.0
+        // dubbo url 包含了服务的很多信息, 后续需要使用其中的参数.
         URL url = new URL(name, host, port, (contextPath == null || contextPath.length() == 0 ? "" : contextPath + "/") + path, map);
 
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
@@ -547,7 +555,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                             registryURL = registryURL.addParameter(Constants.PROXY_KEY, proxy);
                         }
 
+                        // 动态代理.
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
+                        // 继续封装，增加service 配置信息.
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
@@ -557,6 +567,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
+                    // 将暴露的服务放在protocol 下， protocol 是单例的类变量.
                     Exporter<?> exporter = protocol.export(wrapperInvoker);
                     exporters.add(exporter);
                 }

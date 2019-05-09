@@ -53,6 +53,7 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // 使用netty
         return getTransporter().bind(url, handler);
     }
 
@@ -76,6 +77,7 @@ public class Transporters {
     }
 
     public static Transporter getTransporter() {
+        // SPI 技术  Transporter @SPI("netty")  参看 NettyTransporter
         return ExtensionLoader.getExtensionLoader(Transporter.class).getAdaptiveExtension();
     }
 

@@ -53,6 +53,10 @@ import static org.apache.dubbo.config.spring.util.BeanFactoryUtils.addApplicatio
 /**
  * ServiceFactoryBean
  *
+ *  一个 <dubbo:service> 对应一个 ServiceBean.
+ *  Spring 启动的不同时间调用不同的接口:
+ *   ApplicationContextAware(setApplicationContext) -> ApplicationListener(onApplicationEvent) -> InitializingBean(afterPropertiesSet)
+ *   调用export(), 确保Spring 启动后服务已经暴露.
  * @export
  */
 public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean, DisposableBean,
@@ -311,6 +315,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
     }
 
     /**
+     * 用于暴露服务.
      * @since 2.6.5
      */
     @Override
