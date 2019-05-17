@@ -45,6 +45,7 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         String methodName = RpcUtils.getMethodName(invocation);
         String key = invokers.get(0).getUrl().getServiceKey() + "." + methodName;
+        // 对所有的调用者生成hashcode, 以此判断调用者是否发生变化.
         int identityHashCode = System.identityHashCode(invokers);
         ConsistentHashSelector<T> selector = (ConsistentHashSelector<T>) selectors.get(key);
         if (selector == null || selector.identityHashCode != identityHashCode) {
@@ -56,24 +57,29 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
 
     private static final class ConsistentHashSelector<T> {
 
+        // 存储hash环， 有序.
         private final TreeMap<Long, Invoker<T>> virtualInvokers;
 
         private final int replicaNumber;
 
         private final int identityHashCode;
 
+        // <dubbo:method> 下<dubbo:parameter> 中参数名称为hash.arguments的值.
         private final int[] argumentIndex;
 
+        // 创建hash环.
         ConsistentHashSelector(List<Invoker<T>> invokers, String methodName, int identityHashCode) {
             this.virtualInvokers = new TreeMap<Long, Invoker<T>>();
             this.identityHashCode = identityHashCode;
             URL url = invokers.get(0).getUrl();
+            // 虚拟节点数.
             this.replicaNumber = url.getMethodParameter(methodName, "hash.nodes", 160);
             String[] index = Constants.COMMA_SPLIT_PATTERN.split(url.getMethodParameter(methodName, "hash.arguments", "0"));
             argumentIndex = new int[index.length];
             for (int i = 0; i < index.length; i++) {
                 argumentIndex[i] = Integer.parseInt(index[i]);
             }
+            // 为invoker 创建虚拟节点, 尽量使虚拟节点均匀分布.
             for (Invoker<T> invoker : invokers) {
                 String address = invoker.getUrl().getAddress();
                 for (int i = 0; i < replicaNumber / 4; i++) {
@@ -86,6 +92,7 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
             }
         }
 
+        // 根据hash环选择调用者.
         public Invoker<T> select(Invocation invocation) {
             String key = toKey(invocation.getArguments());
             byte[] digest = md5(key);
@@ -103,7 +110,9 @@ public class ConsistentHashLoadBalance extends AbstractLoadBalance {
         }
 
         private Invoker<T> selectForKey(long hash) {
+            // 大于等于指定key的第一个key.
             Map.Entry<Long, Invoker<T>> entry = virtualInvokers.ceilingEntry(hash);
+            // 不存在时取第一个.
             if (entry == null) {
                 entry = virtualInvokers.firstEntry();
             }

@@ -44,6 +44,8 @@ import java.util.Map;
 
 /**
  * ReferenceFactoryBean
+ *
+ * 参考 ServiceBean.
  */
 public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean, ApplicationContextAware, InitializingBean, DisposableBean {
 
@@ -65,6 +67,10 @@ public class ReferenceBean<T> extends ReferenceConfig<T> implements FactoryBean,
         SpringExtensionFactory.addApplicationContext(applicationContext);
     }
 
+    /**
+     * factoryBean 接口，获取bean实际上是通过该方法返回bean.
+     * @return
+     */
     @Override
     public Object getObject() {
         return get();
